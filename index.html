@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบคีย์โพยหวย & จัดการโพย</title>
+<title>ระบบคีย์โพยหวย & จัดการโพย (Firebase Realtime)</title>
+
+<!-- Firebase JS SDK (v9 Compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <style>
 :root {
   --bg-main: #0f172a;
@@ -150,6 +155,10 @@ body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-
 .sub-tab-btn{padding:8px 16px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);border-radius:4px;cursor:pointer;font-weight:bold;margin-right:8px;}
 .sub-tab-btn.active{background:var(--primary);color:white;}
 
+#sync-status-badge {font-size: 12px; padding: 4px 10px; border-radius: 12px; font-weight: bold; margin-left: 10px; display: inline-flex; align-items: center; gap: 4px;}
+.sync-online {background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4);}
+.sync-offline {background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);}
+
 @media(max-width:768px){
   body{flex-direction:column}
   .sidebar{width:100%;height:auto;margin-left:0 !important;}
@@ -185,6 +194,7 @@ body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-
     <div style="display:flex;align-items:center;">
       <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="เปิด/ปิด เมนู">☰</button>
       <div id="pageTitle" style="font-weight:bold;font-size:16px;">จดหวย</div>
+      <span id="sync-status-badge" class="sync-offline">🔴 กำลังเชื่อมต่อ...</span>
     </div>
     <button class="theme-toggle" onclick="toggleTheme()">☀️ โหมดสว่าง / 🌙 โหมดมืด</button>
   </div>
@@ -241,13 +251,13 @@ body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-
       <div class="note-label">บันทึกเพิ่มเติม (ชื่อลูกค้า / Note - พิมพ์แล้วกด Enter เพื่อส่งโพย)</div>
       <textarea class="note" id="note" placeholder="ใส่ชื่อลูกค้า แล้วกด Enter เพื่อส่งโพยทันที..."></textarea>
       
-      <button class="send" onclick="sendSlip()">✈ ส่งโพย (บันทึกข้อมูลเข้าสู่ระบบ)</button>
+      <button class="send" onclick="sendSlip()">✈ ส่งโพย (บันทึกข้อมูลเข้า Firebase)</button>
     </div>
 
     <div id="page-slips" class="page">
       <div class="filter-box">
         <div class="filter-title">
-          ข้อมูลโพย <span>PHOENIX36</span>
+          ข้อมูลโพย <span>Firebase Realtime DB</span>
         </div>
         <div class="filter-row">
           <div class="filter-group">
@@ -276,7 +286,6 @@ body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-
       </div>
     </div>
 
-    <!-- หน้าสรุปยอดตัวเลข (เพิ่มเข้ามาใหม่) -->
     <div id="page-summary" class="page">
       <div class="card">
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
@@ -390,16 +399,60 @@ body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-
 </div>
 
 <script>
+// ==========================================
+// 1. Firebase Configuration & Initialization
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCpPAT4t0DLqhP27EMesy3KNsEJsCxF_yo",
+  authDomain: "my-slip-app-eb762.firebaseapp.com",
+  databaseURL: "https://my-slip-app-eb762-default-rtdb.firebaseio.com",
+  projectId: "my-slip-app-eb762",
+  storageBucket: "my-slip-app-eb762.firebasestorage.app",
+  messagingSenderId: "75683810457",
+  appId: "1:75683810457:web:d9f7ff6e0b013588783c08",
+  measurementId: "G-DB7CPJ8170"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const slipsRef = db.ref('slips');
+
+// ตรวจสอบสถานะการเชื่อมต่อ Firebase
+db.ref('.info/connected').on('value', (snap) => {
+  const badge = $('sync-status-badge');
+  if (snap.val() === true) {
+    badge.className = "sync-online";
+    badge.innerHTML = "🟢 เชื่อมต่อ Realtime แล้ว";
+  } else {
+    badge.className = "sync-offline";
+    badge.innerHTML = "🔴 ขาดการเชื่อมต่อ";
+  }
+});
+
 let selectedLottoName = "หวยลาว";
 let mode = "2ตัว";
 let doubleMode = false;
 let items = [];
 let pendingNumbers = [];
-let savedSlips = JSON.parse(localStorage.getItem("lotto_slips_db") || "[]");
+let savedSlips = [];
 
 const $ = id => document.getElementById(id);
 
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyC-Rw_BJFXJjI2c30bzk42Th0voqw3pBnAryPUFMBeyqTwSJBbjmhVQkbhL6h3xkHtsg/exec";
+// ==========================================
+// 2. Realtime Listener ดึงข้อมูลจาก Firebase
+// ==========================================
+slipsRef.on('value', (snapshot) => {
+  const data = snapshot.val();
+  savedSlips = [];
+  if (data) {
+    Object.keys(data).forEach(key => {
+      savedSlips.push({ _firebaseKey: key, ...data[key] });
+    });
+  }
+  // อัปเดต UI หน้าปัจจุบันอัตโนมัติ
+  if ($('page-slips').classList.contains('active')) renderSavedSlips();
+  if ($('page-summary').classList.contains('active')) calculateNumberSummary();
+});
 
 function toggleSidebar() {
   $('sidebar').classList.toggle('collapsed');
@@ -582,7 +635,10 @@ function render(){
   box.innerHTML = `<div class="lottery-group"><div class="lotto-head"><div>${selectedLottoName}</div><div>${new Date().toLocaleDateString("th-TH")}</div></div><div class="lotto-body">${bodyHTML}</div><div class="lotto-foot"><span>ยอดรวมทั้งหมด</span><span>${totalGrand.toLocaleString()} ฿</span></div></div>`;
 }
 
-async function sendSlip(){
+// ==========================================
+// 3. บันทึกโพยลง Firebase
+// ==========================================
+function sendSlip(){
   if(!items.length){ alert("กรุณาเพิ่มรายการเลขก่อนส่งโพย"); return; }
   
   const slipId = "SLIP-" + Date.now().toString().slice(-5);
@@ -592,7 +648,6 @@ async function sendSlip(){
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
-  
   const isoDate = `${yyyy}-${mm}-${dd}`;
 
   const slipData = {
@@ -604,31 +659,19 @@ async function sendSlip(){
     winTotal: 0,
     discount: 0,
     time: now.toLocaleString("th-TH"),
-    isoDate: isoDate
+    isoDate: isoDate,
+    timestamp: Date.now()
   };
 
-  savedSlips.push(slipData);
-  localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
-
-  if (GOOGLE_SHEET_URL) {
-    try {
-      fetch(GOOGLE_SHEET_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slipData)
-      });
-    } catch (err) {
-      console.error("ส่งข้อมูลเข้า Google Sheets ไม่สำเร็จ:", err);
-    }
-  }
-
-  alert(`บันทึกโพย [${selectedLottoName}] สำเร็จ! ยอดรวม: ${totalAmount.toLocaleString()} ฿`);
-  
-  items = [];
-  $("note").value = "";
-  render();
-  $("number").focus();
+  slipsRef.push(slipData).then(() => {
+    alert(`บันทึกโพย [${selectedLottoName}] สำเร็จ! ยอดรวม: ${totalAmount.toLocaleString()} ฿`);
+    items = [];
+    $("note").value = "";
+    render();
+    $("number").focus();
+  }).catch((err) => {
+    alert("เกิดข้อผิดพลาดในการบันทึกข้อมูลลง Firebase: " + err.message);
+  });
 }
 
 function formatDate(d) {
@@ -695,15 +738,14 @@ function parseSlipDate(slip) {
 function renderSavedSlips(){
   const area = $("savedSlipsArea");
   if(!savedSlips.length){ 
-    area.innerHTML = "<p style='text-align:center;padding:20px;color:var(--text-muted)'>ยังไม่มีโพยที่ถูกบันทึก</p>"; 
+    area.innerHTML = "<p style='text-align:center;padding:20px;color:var(--text-muted)'>ยังไม่มีโพยที่ถูกบันทึกใน Firebase</p>"; 
     return; 
   }
   
   const startVal = $('startDate').value;
   const endVal = $('endDate').value;
 
-  const filteredSlips = savedSlips.filter((s, index) => {
-    s._originalIndex = index;
+  const filteredSlips = savedSlips.filter((s) => {
     if (!startVal && !endVal) return true;
     const slipDate = parseSlipDate(s);
     if (!slipDate) return true;
@@ -780,8 +822,8 @@ function renderSavedSlips(){
           </td>
           <td>
             <div class="btn-action-group">
-              <button class="btn-view" onclick="viewSlipDetail(${s._originalIndex})">👁 ดูโพย</button>
-              <button class="btn-delete" onclick="deleteSlip(${s._originalIndex})">ลบ</button>
+              <button class="btn-view" onclick="viewSlipDetail('${s._firebaseKey}')">👁 ดูโพย</button>
+              <button class="btn-delete" onclick="deleteSlip('${s._firebaseKey}', '${s.id}')">ลบ</button>
             </div>
           </td>
         </tr>`;
@@ -841,7 +883,6 @@ function renderSavedSlips(){
   area.innerHTML = finalHTML;
 }
 
-/* ฟังก์ชันคำนวณและสรุปยอดซื้อรวมแต่ละตัวเลข (2 ตัว 00-99 และ 3 ตัว 000-999) */
 function switchSummaryTab(tab) {
   if (tab === '2digits') {
     $('tab2DigitsBtn').classList.add('active');$('tab3DigitsBtn').classList.remove('active');
@@ -871,21 +912,24 @@ function calculateNumberSummary() {
   savedSlips.forEach(slip => {
     if (selectedLotto !== "ทั้งหมด" && slip.lottoName !== selectedLotto) return;
 
-    slip.items.forEach(item => {
-      const mode = item.mode;
-      const top = Number(item.top) || 0;
-      const bottom = Number(item.bottom) || 0;
+    if (slip.items && Array.isArray(slip.items)) {
+      slip.items.forEach(item => {
+        const top = Number(item.top) || 0;
+        const bottom = Number(item.bottom) || 0;
 
-      item.nums.forEach(num => {
-        if (num.length === 2 && data2D[num]) {
-          data2D[num].top += top;
-          data2D[num].bottom += bottom;
-        } else if (num.length === 3 && data3D[num]) {
-          data3D[num].top += top;
-          data3D[num].tood += bottom; // bottom ของ 3 ตัวเก็บเป็นยอดโต๊ด
+        if (item.nums && Array.isArray(item.nums)) {
+          item.nums.forEach(num => {
+            if (num.length === 2 && data2D[num]) {
+              data2D[num].top += top;
+              data2D[num].bottom += bottom;
+            } else if (num.length === 3 && data3D[num]) {
+              data3D[num].top += top;
+              data3D[num].tood += bottom;
+            }
+          });
         }
       });
-    });
+    }
   });
 
   // Render 2 ตัว
@@ -967,8 +1011,8 @@ function calculateNumberSummary() {
   }
 }
 
-function viewSlipDetail(index){
-  const s = savedSlips[index];
+function viewSlipDetail(key){
+  const s = savedSlips.find(item => item._firebaseKey === key);
   if(!s) return;
 
   $("modalSlipTitle").textContent = `รายละเอียดโพย ${s.id} (${s.lottoName})`;
@@ -981,21 +1025,23 @@ function viewSlipDetail(index){
   `;
 
   let totalGrand = 0;
-  s.items.forEach((it) => {
-    totalGrand += it.nums.length * (it.top + it.bottom);
-    let priceText = (it.mode==="3ตัว"||it.mode==="6กลับ") 
-      ? `3 ตัว บน : <b style="color:var(--win-color)">${it.top}</b> × โต๊ด : <b style="color:var(--win-color)">${it.bottom}</b>`
-      : `2 ตัว บน x ล่าง : <b style="color:var(--win-color)">${it.top} x ${it.bottom}</b>`;
+  if(s.items && Array.isArray(s.items)) {
+    s.items.forEach((it) => {
+      totalGrand += it.nums.length * (it.top + it.bottom);
+      let priceText = (it.mode==="3ตัว"||it.mode==="6กลับ") 
+        ? `3 ตัว บน : <b style="color:var(--win-color)">${it.top}</b> × โต๊ด : <b style="color:var(--win-color)">${it.bottom}</b>`
+        : `2 ตัว บน x ล่าง : <b style="color:var(--win-color)">${it.top} x ${it.bottom}</b>`;
 
-    bodyHTML += `
-      <div style="background:var(--bg-main);border:1px solid var(--border-color);border-radius:6px;padding:12px;margin-bottom:10px">
-        <div style="color:#f97316;font-size:14px;font-weight:bold;margin-bottom:6px">${priceText} (${it.nums.length} ชุด)</div>
-        <div style="font-size:16px;letter-spacing:3px;word-spacing:6px;line-height:1.8;word-break:break-all;font-weight:bold;color:var(--text-main)">
-          ${it.nums.join("  ")}
+      bodyHTML += `
+        <div style="background:var(--bg-main);border:1px solid var(--border-color);border-radius:6px;padding:12px;margin-bottom:10px">
+          <div style="color:#f97316;font-size:14px;font-weight:bold;margin-bottom:6px">${priceText} (${it.nums.length} ชุด)</div>
+          <div style="font-size:16px;letter-spacing:3px;word-spacing:6px;line-height:1.8;word-break:break-all;font-weight:bold;color:var(--text-main)">
+            ${it.nums.join("  ")}
+          </div>
         </div>
-      </div>
-    `;
-  });
+      `;
+    });
+  }
 
   bodyHTML += `
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--summary-bg);color:white;padding:10px 14px;border-radius:6px;font-weight:bold;margin-top:10px">
@@ -1014,33 +1060,20 @@ function closeSlipModal(e){
   }
 }
 
-function deleteSlip(i){
-  const s = savedSlips[i];
-  if(!s) return;
-
-  if(confirm(`ยืนยันลบโพย ${s.id} ใช่หรือไม่?`)){
-    if (GOOGLE_SHEET_URL) {
-      try {
-        fetch(GOOGLE_SHEET_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            id: s.id
-          })
-        });
-      } catch (err) {
-        console.error("ลบข้อมูลใน Google Sheets ไม่สำเร็จ:", err);
-      }
-    }
-
-    savedSlips.splice(i,1);
-    localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
-    renderSavedSlips();
+// ==========================================
+// 4. ลบโพยใน Firebase
+// ==========================================
+function deleteSlip(key, slipId){
+  if(confirm(`ยืนยันลบโพย ${slipId} ออกจาก Firebase ใช่หรือไม่?`)){
+    db.ref(`slips/${key}`).remove().catch((err) => {
+      alert("เกิดข้อผิดพลาดในการลบโพย: " + err.message);
+    });
   }
 }
 
+// ==========================================
+// 5. ตรวจรางวัล & อัปเดตผลเข้า Firebase
+// ==========================================
 function checkResults(){
   const target = $("checkTargetLotto").value;
   const top3 = $("resTop3").value.trim();
@@ -1058,25 +1091,28 @@ function checkResults(){
 
   savedSlips.forEach(s => {
     if(s.lottoName === target){
-      s.winTotal = 0;
-      s.items.forEach(it => {
-        it.nums.forEach(n => {
-          let winAmount = 0;
-          if((it.mode==="3ตัว"||it.mode==="6กลับ") && n === top3 && it.top > 0) winAmount = it.top * 900;
-          if((it.mode==="3ตัว"||it.mode==="6กลับ") && toodList.includes(n) && n !== top3 && it.bottom > 0) winAmount = it.bottom * 150;
-          if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === top2 && it.top > 0) winAmount = it.top * 90;
-          if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === bottom2 && it.bottom > 0) winAmount = it.bottom * 90;
+      let currentWinTotal = 0;
+      if(s.items && Array.isArray(s.items)) {
+        s.items.forEach(it => {
+          it.nums.forEach(n => {
+            let winAmount = 0;
+            if((it.mode==="3ตัว"||it.mode==="6กลับ") && n === top3 && it.top > 0) winAmount = it.top * 900;
+            if((it.mode==="3ตัว"||it.mode==="6กลับ") && toodList.includes(n) && n !== top3 && it.bottom > 0) winAmount = it.bottom * 150;
+            if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === top2 && it.top > 0) winAmount = it.top * 90;
+            if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === bottom2 && it.bottom > 0) winAmount = it.bottom * 90;
 
-          if(winAmount > 0){
-            s.winTotal += winAmount;
-            winItems.push({id: s.id, num: n, win: winAmount});
-          }
+            if(winAmount > 0){
+              currentWinTotal += winAmount;
+              winItems.push({id: s.id, num: n, win: winAmount});
+            }
+          });
         });
-      });
+      }
+
+      // อัปเดตยอดชนะเข้า Firebase Realtime Direct
+      db.ref(`slips/${s._firebaseKey}/winTotal`).set(currentWinTotal);
     }
   });
-
-  localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
 
   const resBox = $("checkResultArea");
   if(!winItems.length){
