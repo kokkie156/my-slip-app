@@ -1,1124 +1,246 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ระบบคีย์โพยหวย & จัดการโพย</title>
-<style>
-:root {
-  --bg-main: #0f172a;
-  --bg-card: #1e293b;
-  --bg-sidebar: #172554;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --border-color: #334155;
-  --input-bg: #0f172a;
-  --chip-bg: #0284c7;
-  --lotto-head: #1e40af;
-  --lotto-bg: #1e293b;
-  --lotto-border: #3b82f6;
-  --btn-switch-bg: #334155;
-  --btn-switch-active: #2563eb;
-  --win-color: #22c55e;
-  --danger: #ef4444;
-  --summary-bg: #1e3a8a;
-  --grand-summary-bg: #064e3b;
-}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบคีย์โพยหวย & จัดการโพย (Firebase Realtime)</title>
 
-[data-theme="light"] {
-  --bg-main: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-sidebar: #1e293b;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --border-color: #cbd5e1;
-  --input-bg: #ffffff;
-  --chip-bg: #0284c7;
-  --lotto-head: #2563eb;
-  --lotto-bg: #eff6ff;
-  --lotto-border: #93c5fd;
-  --btn-switch-bg: #e2e8f0;
-  --btn-switch-active: #2563eb;
-  --win-color: #16a34a;
-  --summary-bg: #3b82f6;
-  --grand-summary-bg: #10b981;
-}
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg-main);font-family:Arial,"Noto Sans Thai",sans-serif;color:var(--text-main);display:flex;height:100vh;overflow:hidden}
+  <!-- Firebase JS SDK (v9 Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-.sidebar{width:240px;background:var(--bg-sidebar);color:white;display:flex;flex-direction:column;flex-shrink:0;user-select:none;z-index:100;transition:margin-left 0.3s ease, width 0.3s ease}
-.sidebar.collapsed{margin-left:-240px}
-.sidebar-head{padding:16px;font-size:18px;font-weight:bold;color:#60a5fa;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:10px}
-.nav-list{list-style:none;padding:10px 0;margin:0}
-.nav-item{padding:12px 18px;display:flex;align-items:center;gap:12px;font-size:15px;cursor:pointer;color:#cbd5e1;transition:0.2s}
-.nav-item:hover, .nav-item.active{background:rgba(255,255,255,0.1);color:white;border-left:4px solid var(--primary)}
-.nav-item .icon{font-size:16px;width:20px;text-align:center}
-
-.toggle-sidebar-btn{background:none;border:none;color:var(--text-main);font-size:20px;cursor:pointer;padding:4px 8px;margin-right:10px;border-radius:4px;display:flex;align-items:center;justify-content:center}
-.toggle-sidebar-btn:hover{background:rgba(255,255,255,0.1)}
-
-.main-wrapper{flex:1;display:flex;flex-direction:column;overflow:hidden;width:100%}
-.header-bar{padding:12px 20px;background:var(--bg-card);border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center}
-.content{padding:16px 20px;max-width:1000px;margin:0 auto;width:100%;overflow-y:auto;height:calc(100vh - 60px)}
-
-.page{display:none}
-.page.active{display:block}
-
-.lotto-selector{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px}
-.lotto-btn{padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);cursor:pointer;font-weight:bold;font-size:14px;white-space:nowrap}
-.lotto-btn.active{background:var(--primary);color:white;border-color:var(--primary)}
-
-.top-modes{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.top-modes button{height:40px;border:0;border-radius:4px;background:#334155;color:white;font-size:14px;cursor:pointer;font-weight:bold;transition:0.2s}
-.top-modes button.active{background:var(--primary)}
-
-.switches{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
-.switch-btn{height:42px;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--btn-switch-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:15px;font-weight:bold;transition:0.2s;width:100%}
-.switch-btn.active{background:var(--btn-switch-active);color:white;border-color:var(--primary)}
-
-.card{background:var(--bg-card);border-radius:6px;padding:14px;margin-bottom:14px;box-shadow:0 2px 4px rgba(0,0,0,0.1);border:1px solid var(--border-color)}
-.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.count-title{font-weight:700;font-size:14px}
-.btn-del-all{border:0;background:var(--danger);color:white;width:35px;height:31px;border-radius:4px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
-
-.pending-chips{display:flex;flex-wrap:wrap;gap:8px;min-height:38px}
-.chip{background:var(--chip-bg);color:white;padding:6px 14px;border-radius:4px;font-size:15px;font-weight:bold;cursor:pointer;border:0}
-
-.form{display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr;gap:9px;align-items:end;margin:16px 0}
-.field label{display:block;font-size:13px;margin-bottom:6px;font-weight:bold;color:var(--text-muted)}
-.field input{width:100%;height:38px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-main);padding:5px 10px;font-size:16px;outline:none;border-radius:4px}
-.field input:focus{border-color:var(--primary)}
-.add{height:38px;border:0;background:var(--primary);border-radius:4px;cursor:pointer;color:white;font-weight:bold;font-size:14px}
-
-.lottery-group{background:var(--lotto-bg);border:1px solid var(--lotto-border);border-radius:6px;overflow:hidden;margin-bottom:16px}
-.lotto-head{height:42px;background:var(--lotto-head);color:white;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:14px;font-weight:700}
-.lotto-body{padding:14px 16px}
-.item-row{position:relative;margin-bottom:14px;padding-right:40px}
-.item-row:last-child{margin-bottom:0}
-.mode-title{color:#f97316;font-size:14px;font-weight:bold;margin-bottom:6px}
-.numbers-text{font-size:16px;letter-spacing:4px;word-spacing:6px;line-height:1.8;word-break:break-all}
-.btn-del-item{position:absolute;right:0;top:0;border:0;background:var(--danger);color:white;width:28px;height:28px;border-radius:4px;cursor:pointer}
-
-.lotto-foot{background:var(--lotto-head);color:white;padding:10px 14px;display:flex;justify-content:space-between;font-size:14px;font-weight:700}
-.note-label{font-size:13px;font-weight:700;margin:9px 0;color:var(--text-muted)}
-.note{width:100%;height:38px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-main);padding:8px;outline:none;border-radius:4px}
-.send{display:flex;align-items:center;justify-content:center;gap:6px;margin:15px auto 0;background:var(--primary);color:#fff;border:0;border-radius:4px;height:42px;width:100%;cursor:pointer;font-size:16px;font-weight:bold}
-
-.table-container{width:100%;overflow-x:auto}
-.table{width:100%;border-collapse:collapse;margin-top:10px}
-.table th, .table td{border:1px solid var(--border-color);padding:10px;text-align:center;font-size:14px}
-.table th{background:var(--bg-card);color:var(--text-muted);font-weight:bold}
-.table tfoot tr{background:var(--summary-bg);color:white;font-weight:bold}
-.table tfoot td{border:1px solid rgba(255,255,255,0.2);padding:12px 10px;font-size:14px}
-
-.filter-box {display:flex;flex-direction:column;gap:12px;margin-bottom:16px;background:var(--bg-card);padding:14px;border-radius:6px;border:1px solid var(--border-color);}
-.filter-title {font-size:20px;font-weight:bold;display:flex;align-items:center;gap:10px;}
-.filter-title span {font-size:12px;color:var(--text-muted);font-weight:normal;}
-.filter-row {display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-.filter-group {display:flex;flex-direction:column;gap:4px;}
-.filter-group label {font-size:12px;color:var(--text-muted);font-weight:bold;}
-.filter-input {height:36px;padding:4px 8px;border:1px solid var(--border-color);background:var(--input-bg);color:var(--text-main);border-radius:4px;outline:none;}
-.btn-search {height:36px;padding:0 16px;background:#2563eb;color:white;border:none;border-radius:4px;font-weight:bold;cursor:pointer;margin-top:auto;}
-.btn-search:hover {background:#1d4ed8;}
-.preset-buttons {display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
-.btn-preset {padding:6px 12px;background:#0284c7;color:white;border:none;border-radius:4px;font-size:13px;font-weight:bold;cursor:pointer;transition:0.2s;}
-.btn-preset:hover, .btn-preset.active {background:#0369a1;outline:2px solid #38bdf8;}
-
-.btn-action-group{display:flex;gap:6px;justify-content:center}
-.btn-view{background:var(--primary);color:white;border:0;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold;display:inline-flex;align-items:center;gap:4px}
-.btn-view:hover{background:var(--primary-hover)}
-.btn-delete{background:var(--danger);color:white;border:0;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:bold}
-
-.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;justify-content:center;align-items:center;z-index:9999;padding:16px}
-.modal-overlay.active{display:flex}
-.modal-content{background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;width:100%;max-width:550px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,0.5);overflow:hidden}
-.modal-header{background:var(--lotto-head);color:white;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;font-weight:bold;font-size:16px}
-.modal-close{background:none;border:0;color:white;font-size:20px;cursor:pointer;font-weight:bold}
-.modal-body{padding:18px;overflow-y:auto;flex:1}
-.modal-footer{padding:12px 18px;border-top:1px solid var(--border-color);display:flex;justify-content:flex-end}
-
-.theme-toggle{background:var(--bg-main);border:1px solid var(--border-color);color:var(--text-main);padding:6px 12px;border-radius:20px;cursor:pointer;font-size:13px;font-weight:bold}
-
-.group-header{font-size:16px;font-weight:bold;color:#60a5fa;margin:20px 0 10px 0;padding-bottom:6px;border-bottom:2px solid var(--primary);display:flex;justify-content:space-between;align-items:center}
-.grand-summary-card{background:var(--grand-summary-bg);color:white;padding:16px;border-radius:8px;margin-top:30px;box-shadow:0 4px 6px rgba(0,0,0,0.3)}
-
-.sub-tab-btn{padding:8px 16px;border:1px solid var(--border-color);background:var(--bg-card);color:var(--text-main);border-radius:4px;cursor:pointer;font-weight:bold;margin-right:8px;}
-.sub-tab-btn.active{background:var(--primary);color:white;}
-
-@media(max-width:768px){
-  body{flex-direction:column}
-  .sidebar{width:100%;height:auto;margin-left:0 !important;}
-  .sidebar.collapsed{display:none;}
-  .top-modes{grid-template-columns:repeat(3,1fr)}
-  .form{grid-template-columns:1fr 1fr}
-  .add{grid-column:1/-1}
-}
-</style>
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+  </style>
 </head>
-<body data-theme="dark">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-6">
 
-<div class="sidebar" id="sidebar">
-  <div class="sidebar-head">📌 ระบบจัดการโพย</div>
-  <ul class="nav-list">
-    <li class="nav-item active" onclick="switchPage('page-entry', this)">
-      <span class="icon">📝</span> จดหวย
-    </li>
-    <li class="nav-item" onclick="switchPage('page-slips', this); renderSavedSlips();">
-      <span class="icon">🧾</span> โพยหวย
-    </li>
-    <li class="nav-item" onclick="switchPage('page-summary', this); calculateNumberSummary();">
-      <span class="icon">📊</span> สรุปยอดตัวเลข
-    </li>
-    <li class="nav-item" onclick="switchPage('page-check', this)">
-      <span class="icon">🔍</span> ตรวจรางวัล
-    </li>
-  </ul>
-</div>
-
-<div class="main-wrapper">
-  <div class="header-bar">
-    <div style="display:flex;align-items:center;">
-      <button class="toggle-sidebar-btn" onclick="toggleSidebar()" title="เปิด/ปิด เมนู">☰</button>
-      <div id="pageTitle" style="font-weight:bold;font-size:16px;">จดหวย</div>
+  <div class="max-w-6xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+      <h1 class="text-xl md:text-2xl font-bold text-amber-400 flex items-center gap-2">
+        <i class="fa-solid fa-receipt"></i> ระบบคีย์โพยหวยออนไลน์
+      </h1>
+      <span id="sync-status" class="text-sm px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+        <i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังเชื่อมต่อ...
+      </span>
     </div>
-    <button class="theme-toggle" onclick="toggleTheme()">☀️ โหมดสว่าง / 🌙 โหมดมืด</button>
-  </div>
 
-  <div class="content">
-
-    <div id="page-entry" class="page active">
-      <div class="lotto-selector">
-        <button class="lotto-btn active" onclick="selectLotto('หวยลาว', this)">หวยลาว</button>
-        <button class="lotto-btn" onclick="selectLotto('หวยไทย', this)">หวยไทย</button>
-        <button class="lotto-btn" onclick="selectLotto('ฮานอยพิเศษ', this)">ฮานอยพิเศษ</button>
-        <button class="lotto-btn" onclick="selectLotto('ฮานอยปกติ', this)">ฮานอยปกติ</button>
-        <button class="lotto-btn" onclick="selectLotto('ฮานอย VIP', this)">ฮานอย VIP</button>
-      </div>
-
-      <div class="top-modes">
-        <button data-mode="2ตัว" class="active">สองตัว</button>
-        <button data-mode="3ตัว">สามตัว</button>
-        <button data-mode="เลขวิ่ง">เลขวิ่ง</button>
-        <button data-mode="19ประตู">19 ประตู</button>
-        <button data-mode="6กลับ">6 กลับ</button>
-        <button data-mode="ตัวช่วย">ตัวช่วย</button>
-      </div>
-
-      <div class="switches">
-        <button id="reverseBtn" class="switch-btn" onclick="toggleReverse()">
-          <span>กลับเลข</span> <span>🔀</span>
-        </button>
-        <button id="doubleBtn" class="switch-btn" onclick="toggleDouble()">
-          <span>เลขเบิ้ล</span> <span>⇄</span>
-        </button>
-      </div>
-
-      <div class="card">
-        <div class="card-head">
-          <div class="count-title">จำนวน <span id="chipCount">0</span> รายการ</div>
-          <button class="btn-del-all" onclick="clearPendingChips()">🗑</button>
-        </div>
-        <div id="pendingArea" class="pending-chips"></div>
-      </div>
-
-      <div class="form">
-        <div class="field">
-          <label>ใส่เลข (รองรับการวางข้อความสัญลักษณ์)</label>
-          <input id="number" inputmode="numeric" autocomplete="off" placeholder="วางเลขที่นี่...">
-        </div>
-        <div class="field"><label id="labelTop">บน</label><input id="topPrice" type="number" min="0"></div>
-        <div class="field"><label id="labelBottom">ล่าง</label><input id="bottomPrice" type="number" min="0"></div>
-        <button class="add" onclick="addItem()">＋ เพิ่มรายการ</button>
-      </div>
-
-      <div id="slips"></div>
-
-      <div class="note-label">บันทึกเพิ่มเติม (ชื่อลูกค้า / Note - พิมพ์แล้วกด Enter เพื่อส่งโพย)</div>
-      <textarea class="note" id="note" placeholder="ใส่ชื่อลูกค้า แล้วกด Enter เพื่อส่งโพยทันที..."></textarea>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
-      <button class="send" onclick="sendSlip()">✈ ส่งโพย (บันทึกข้อมูลเข้าสู่ระบบ)</button>
-    </div>
+      <!-- ฟอร์มป้อนข้อมูล (Left Column) -->
+      <div class="lg:col-span-5 bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4">
+        <h2 class="text-lg font-semibold text-slate-200 border-b border-slate-700 pb-2">
+          <i class="fa-solid fa-pen-to-square text-indigo-400 mr-1"></i> คีย์โพยใหม่
+        </h2>
 
-    <div id="page-slips" class="page">
-      <div class="filter-box">
-        <div class="filter-title">
-          ข้อมูลโพย <span>PHOENIX36</span>
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-1">ชื่อลูกค้า / ชื่อโพย</label>
+          <input type="text" id="customerName" placeholder="เช่น พี่กี้, โพยชุด A" 
+                 class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
         </div>
-        <div class="filter-row">
-          <div class="filter-group">
-            <label>ตั้งแต่วันที่</label>
-            <input type="date" id="startDate" class="filter-input">
-          </div>
-          <div class="filter-group">
-            <label>ถึงวันที่</label>
-            <input type="date" id="endDate" class="filter-input">
-          </div>
-          <button class="btn-search" onclick="renderSavedSlips()">ค้นหา</button>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-400 mb-1">รายการตัวเลข (รูปแบบ: ตัวเลข=บน/ล่าง)</label>
+          <textarea id="lottoInput" rows="6" placeholder="ตัวอย่าง:&#10;123=100x100&#10;45=50x50&#10;99=100" 
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-sm focus:outline-none focus:border-indigo-500"></textarea>
         </div>
-        <div class="preset-buttons">
-          <button class="btn-preset active" onclick="setDateFilter('today', this)">วันนี้</button>
-          <button class="btn-preset" onclick="setDateFilter('yesterday', this)">เมื่อวาน</button>
-          <button class="btn-preset" onclick="setDateFilter('thisWeek', this)">สัปดาห์นี้</button>
-          <button class="btn-preset" onclick="setDateFilter('lastWeek', this)">สัปดาห์ที่แล้ว</button>
-          <button class="btn-preset" onclick="setDateFilter('thisMonth', this)">เดือนนี้</button>
-          <button class="btn-preset" onclick="setDateFilter('lastMonth', this)">เดือนที่แล้ว</button>
-        </div>
+
+        <button onclick="saveSlip()" id="btnSave" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-lg shadow-lg transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-paper-plane"></i> บันทึกโพยลง Firebase
+        </button>
       </div>
 
-      <div class="card">
-        <h3 style="margin-top:0;">รายการโพยแยกตามประเภทหวย</h3>
-        <div class="table-container" id="savedSlipsArea"></div>
-      </div>
-    </div>
-
-    <!-- หน้าสรุปยอดตัวเลข (เพิ่มเข้ามาใหม่) -->
-    <div id="page-summary" class="page">
-      <div class="card">
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-          <div>
-            <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:4px;">เลือกประเภทหวย</label>
-            <select id="summaryLottoSelect" onchange="calculateNumberSummary()" style="height:36px;padding:4px 8px;background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px;">
-              <option value="ทั้งหมด">ทั้งหมด</option>
-              <option value="หวยลาว">หวยลาว</option>
-              <option value="หวยไทย">หวยไทย</option>
-              <option value="ฮานอยพิเศษ">ฮานอยพิเศษ</option>
-              <option value="ฮานอยปกติ">ฮานอยปกติ</option>
-              <option value="ฮานอย VIP">ฮานอย VIP</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:13px;font-weight:bold;display:block;margin-bottom:4px;">กรองแสดงผล</label>
-            <label style="font-size:14px;cursor:pointer;">
-              <input type="checkbox" id="showOnlyPurchased" onchange="calculateNumberSummary()" checked> แสดงเฉพาะตัวเลขที่มีการซื้อ
-            </label>
-          </div>
-        </div>
+      <!-- ตารางแสดงโพย & สรุปยอด (Right Column) -->
+      <div class="lg:col-span-7 space-y-6">
         
-        <div style="margin-bottom:16px;">
-          <button class="sub-tab-btn active" id="tab2DigitsBtn" onclick="switchSummaryTab('2digits')">เลข 2 ตัว (00 - 99)</button>
-          <button class="sub-tab-btn" id="tab3DigitsBtn" onclick="switchSummaryTab('3digits')">เลข 3 ตัว (000 - 999)</button>
-        </div>
-
-        <div id="summaryTab2Digits">
-          <h3>สรุปยอดซื้อรวม เลข 2 ตัว (00 ถึง 99)</h3>
-          <div class="table-container">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>ตัวเลข</th>
-                  <th>ยอดซื้อบน (฿)</th>
-                  <th>ยอดซื้อล่าง (฿)</th>
-                  <th>ยอดซื้อรวม (฿)</th>
-                </tr>
-              </thead>
-              <tbody id="summary2DigitsBody"></tbody>
-            </table>
+        <!-- สรุปยอดรวม -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+            <span class="text-xs text-slate-400">จำนวนโพยทั้งหมด</span>
+            <div id="totalSlips" class="text-2xl font-bold text-indigo-400 mt-1">0</div>
+          </div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center">
+            <span class="text-xs text-slate-400">ยอดรวมทั้งหมด (บาท)</span>
+            <div id="totalAmount" class="text-2xl font-bold text-emerald-400 mt-1">0</div>
+          </div>
+          <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 text-center col-span-2 sm:col-span-1">
+            <span class="text-xs text-slate-400">สถานะระบบ</span>
+            <div id="dbStatus" class="text-sm font-semibold text-slate-300 mt-2">Online</div>
           </div>
         </div>
 
-        <div id="summaryTab3Digits" style="display:none;">
-          <h3>สรุปยอดซื้อรวม เลข 3 ตัว (000 ถึง 999)</h3>
-          <div class="table-container">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>ตัวเลข</th>
-                  <th>ยอดซื้อบน (฿)</th>
-                  <th>ยอดซื้อโต๊ด (฿)</th>
-                  <th>ยอดซื้อรวม (฿)</th>
-                </tr>
-              </thead>
-              <tbody id="summary3DigitsBody"></tbody>
-            </table>
+        <!-- รายการโพยทั้งหมด -->
+        <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-lg space-y-4">
+          <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+            <h2 class="text-lg font-semibold text-slate-200">
+              <i class="fa-solid fa-list-check text-emerald-400 mr-1"></i> รายการโพยออนไลน์
+            </h2>
+            <button onclick="clearAllSlips()" class="text-xs text-rose-400 hover:text-rose-300 transition">
+              <i class="fa-solid fa-trash-can mr-1"></i> ลบทั้งหมด
+            </button>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <div id="page-check" class="page">
-      <div class="card">
-        <h3>ระบบตรวจผลรางวัลอัตโนมัติ</h3>
-        <div style="margin-bottom:12px">
-          <label style="font-size:13px;font-weight:bold">เลือกหวยที่ต้องการตรวจ</label>
-          <select id="checkTargetLotto" style="width:100%;height:38px;padding:5px;background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px">
-            <option value="หวยลาว">หวยลาว</option>
-            <option value="หวยไทย">หวยไทย</option>
-            <option value="ฮานอยพิเศษ">ฮานอยพิเศษ</option>
-            <option value="ฮานอยปกติ">ฮานอยปกติ</option>
-            <option value="ฮานอย VIP">ฮานอย VIP</option>
-          </select>
-        </div>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <label style="font-size:13px;font-weight:bold">ผล 3 ตัวบน (เช่น 281)</label>
-            <input id="resTop3" maxlength="3" placeholder="281" style="width:100%;height:38px;padding:5px;background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px">
-          </div>
-          <div>
-            <label style="font-size:13px;font-weight:bold">ผล 2 ตัวล่าง (เช่น 52)</label>
-            <input id="resBottom2" maxlength="2" placeholder="52" style="width:100%;height:38px;padding:5px;background:var(--input-bg);color:var(--text-main);border:1px solid var(--border-color);border-radius:4px">
+          <div id="slipList" class="space-y-3 max-h-[450px] overflow-y-auto pr-1">
+            <!-- โพยจะถูกเรนเดอร์ตรงนี้แบบ Real-time -->
           </div>
         </div>
-        <button onclick="checkResults()" style="margin-top:15px;width:100%;height:40px;background:var(--primary);color:white;border:0;border-radius:4px;font-weight:bold;cursor:pointer">คำนวณและตรวจรางวัล</button>
+
       </div>
 
-      <div class="card">
-        <h3>ผลการตรวจรางวัล</h3>
-        <div id="checkResultArea">กรุณากรอกผลและกดตรวจรางวัล</div>
-      </div>
     </div>
 
   </div>
-</div>
 
-<div id="slipModal" class="modal-overlay" onclick="closeSlipModal(event)">
-  <div class="modal-content" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span id="modalSlipTitle">รายละเอียดโพย</span>
-      <button class="modal-close" onclick="closeSlipModal()">✕</button>
-    </div>
-    <div class="modal-body" id="modalSlipBody"></div>
-    <div class="modal-footer">
-      <button onclick="closeSlipModal()" style="padding:6px 16px;background:var(--border-color);color:white;border:0;border-radius:4px;cursor:pointer;font-weight:bold">ปิด</button>
-    </div>
-  </div>
-</div>
+  <script>
+    // ==========================================
+    // 1. ตั้งค่า Firebase Config (วางค่าของคุณที่นี่)
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-<script>
-let selectedLottoName = "หวยลาว";
-let mode = "2ตัว";
-let doubleMode = false;
-let items = [];
-let pendingNumbers = [];
-let savedSlips = JSON.parse(localStorage.getItem("lotto_slips_db") || "[]");
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const slipsRef = db.ref('slips');
 
-const $ = id => document.getElementById(id);
-
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyC-Rw_BJFXJjI2c30bzk42Th0voqw3pBnAryPUFMBeyqTwSJBbjmhVQkbhL6h3xkHtsg/exec";
-
-function toggleSidebar() {
-  $('sidebar').classList.toggle('collapsed');
-}
-
-function switchPage(pageId, el){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  $(pageId).classList.add('active');
-  if(el) el.classList.add('active');
-  const titles = {'page-entry':'จดหวย', 'page-slips':'รายการโพยหวย', 'page-summary':'สรุปยอดตัวเลข', 'page-check':'ตรวจรางวัล'};
-  $('pageTitle').textContent = titles[pageId] || '';
-}
-
-function toggleTheme(){
-  const body = document.body;
-  body.setAttribute("data-theme", body.getAttribute("data-theme") === "dark" ? "light" : "dark");
-}
-
-function selectLotto(name, btn){
-  document.querySelectorAll('.lotto-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  selectedLottoName = name;
-  render();
-}
-
-document.querySelectorAll(".top-modes button").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll(".top-modes button").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    mode = b.dataset.mode;
-    pendingNumbers = [];
-    doubleMode = false;
-    $("doubleBtn").classList.remove("active");
-    $("number").value = "";
-    showPending();
-    updateInputs();
-    $("number").focus();
-  };
-});
-
-function updateInputs(){
-  if(mode==="3ตัว" || mode==="6กลับ"){
-    $("labelTop").textContent = "บน";
-    $("labelBottom").textContent = "โต๊ด";
-  } else {
-    $("labelTop").textContent = "บน";
-    $("labelBottom").textContent = "ล่าง";
-  }
-}
-
-function unique(a){return [...new Set(a)]}
-
-function permutations3(s){
-  if(s.length!==3) return [s];
-  const a=s.split(""),out=[];
-  for(let i=0;i<3;i++)for(let j=0;j<3;j++)for(let k=0;k<3;k++)
-    if(i!==j&&i!==k&&j!==k)out.push(a[i]+a[j]+a[k]);
-  return unique(out);
-}
-function permutations2(s){return s.length===2?unique([s,s[1]+s[0]]):[s]}
-
-function toggleReverse(){
-  acceptTypedNumbers();
-  if(!pendingNumbers.length) return;
-  let reversed = [];
-  pendingNumbers.forEach(n=>{
-    if(n.length===2) reversed.push(...permutations2(n));
-    else if(n.length===3) reversed.push(...permutations3(n));
-    else reversed.push(n);
-  });
-  pendingNumbers = unique(reversed);
-  showPending();
-}
-
-function toggleDouble(){
-  doubleMode = !doubleMode;
-  $("doubleBtn").classList.toggle("active", doubleMode);
-  if(doubleMode){
-    pendingNumbers = unique([...pendingNumbers, "00","11","22","33","44","55","66","77","88","99"]);
-    showPending();
-  }
-}
-
-function requiredDigits(){
-  return (mode==="3ตัว"||mode==="6กลับ")?3:(mode==="เลขวิ่ง"||mode==="19ประตู"||mode==="ตัวช่วย"?1:2);
-}
-
-function nineteenDoors(d){
-  let out=[];
-  for(let i=0;i<=9;i++) out.push(String(d)+String(i));
-  for(let i=0;i<=9;i++){ if(i!==Number(d)) out.push(String(i)+String(d)); }
-  return unique(out);
-}
-
-function transformNumbers(raw){
-  if(mode==="19ประตู") return nineteenDoors(raw);
-  if(mode==="6กลับ" && raw.length===3) return permutations3(raw);
-  return [raw];
-}
-
-function showPending(){
-  const box=$("pendingArea");
-  box.innerHTML="";
-  $("chipCount").textContent=pendingNumbers.length;
-  pendingNumbers.forEach((num,index)=>{
-    const chip=document.createElement("button");
-    chip.className="chip";
-    chip.textContent=num;
-    chip.onclick=()=>{ pendingNumbers.splice(index,1); showPending(); };
-    box.appendChild(chip);
-  });
-}
-
-function clearPendingChips(){ pendingNumbers=[]; showPending(); }
-
-function acceptTypedNumbers(){
-  const input = $("number");
-  const val = input.value;
-  if(!val) return;
-
-  const need = requiredDigits();
-  const rawTokens = val.split(/[\s,./\-=_+*]+/);
-
-  rawTokens.forEach(token => {
-    let digitsOnly = token.replace(/\D/g, "");
-    if (!digitsOnly) return;
-
-    while (digitsOnly.length >= need) {
-      const raw = digitsOnly.slice(0, need);
-      digitsOnly = digitsOnly.slice(need);
-      pendingNumbers.push(...transformNumbers(raw));
-    }
-  });
-
-  const lastToken = rawTokens[rawTokens.length - 1] ? rawTokens[rawTokens.length - 1].replace(/\D/g, "") : "";
-  input.value = (lastToken.length < need) ? lastToken : "";
-
-  pendingNumbers = unique(pendingNumbers);
-  showPending();
-}
-
-$("number").addEventListener("paste", (e) => {
-  setTimeout(() => {
-    acceptTypedNumbers();
-  }, 50);
-});
-
-function addItem(){
-  acceptTypedNumbers();
-  if(!pendingNumbers.length) return;
-  items.push({
-    mode,
-    nums:[...pendingNumbers],
-    top: Number($("topPrice").value)||0,
-    bottom: Number($("bottomPrice").value)||0
-  });
-  pendingNumbers=[];
-  $("number").value="";
-  $("topPrice").value="";
-  $("bottomPrice").value="";
-  showPending();
-  render();
-
-  $("number").focus();
-}
-
-function render(){
-  const box=$("slips");
-  box.innerHTML="";
-  if(!items.length) return;
-  let totalGrand=0, bodyHTML="";
-  items.forEach((it,gIdx)=>{
-    totalGrand += it.nums.length * (it.top + it.bottom);
-    let priceText = (it.mode==="3ตัว"||it.mode==="6กลับ") 
-      ? `3 ตัว บน : <b>${it.top}</b> × โต๊ด : <b>${it.bottom}</b>`
-      : `2 ตัว บน x ล่าง : <b>${it.top} x ${it.bottom}</b>`;
-    bodyHTML += `<div class="item-row"><div class="mode-title">${priceText}</div><div class="numbers-text">${it.nums.join("  ")}</div><button class="btn-del-item" onclick="items.splice(${gIdx},1);render()">🗑</button></div>`;
-  });
-  box.innerHTML = `<div class="lottery-group"><div class="lotto-head"><div>${selectedLottoName}</div><div>${new Date().toLocaleDateString("th-TH")}</div></div><div class="lotto-body">${bodyHTML}</div><div class="lotto-foot"><span>ยอดรวมทั้งหมด</span><span>${totalGrand.toLocaleString()} ฿</span></div></div>`;
-}
-
-async function sendSlip(){
-  if(!items.length){ alert("กรุณาเพิ่มรายการเลขก่อนส่งโพย"); return; }
-  
-  const slipId = "SLIP-" + Date.now().toString().slice(-5);
-  const totalAmount = items.reduce((sum, it)=> sum + (it.nums.length * (it.top + it.bottom)), 0);
-  
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  
-  const isoDate = `${yyyy}-${mm}-${dd}`;
-
-  const slipData = {
-    id: slipId,
-    lottoName: selectedLottoName,
-    items: JSON.parse(JSON.stringify(items)),
-    note: $("note").value,
-    total: totalAmount,
-    winTotal: 0,
-    discount: 0,
-    time: now.toLocaleString("th-TH"),
-    isoDate: isoDate
-  };
-
-  savedSlips.push(slipData);
-  localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
-
-  if (GOOGLE_SHEET_URL) {
-    try {
-      fetch(GOOGLE_SHEET_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(slipData)
-      });
-    } catch (err) {
-      console.error("ส่งข้อมูลเข้า Google Sheets ไม่สำเร็จ:", err);
-    }
-  }
-
-  alert(`บันทึกโพย [${selectedLottoName}] สำเร็จ! ยอดรวม: ${totalAmount.toLocaleString()} ฿`);
-  
-  items = [];
-  $("note").value = "";
-  render();
-  $("number").focus();
-}
-
-function formatDate(d) {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function setDateFilter(type, btn) {
-  if (btn) {
-    document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-  }
-
-  const today = new Date();
-  let start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-  if (type === 'today') {
-  } else if (type === 'yesterday') {
-    start.setDate(start.getDate() - 1);
-    end.setDate(end.getDate() - 1);
-  } else if (type === 'thisWeek') {
-    const day = start.getDay();
-    const diffToMon = start.getDate() - day + (day === 0 ? -6 : 1);
-    start.setDate(diffToMon);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-  } else if (type === 'lastWeek') {
-    const day = start.getDay();
-    const diffToMon = start.getDate() - day + (day === 0 ? -6 : 1) - 7;
-    start.setDate(diffToMon);
-    end = new Date(start);
-    end.setDate(start.getDate() + 6);
-  } else if (type === 'thisMonth') {
-    start = new Date(today.getFullYear(), today.getMonth(), 1);
-    end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  } else if (type === 'lastMonth') {
-    start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    end = new Date(today.getFullYear(), today.getMonth(), 0);
-  }
-
-  $('startDate').value = formatDate(start);$('endDate').value = formatDate(end);
-  renderSavedSlips();
-}
-
-function parseSlipDate(slip) {
-  if (slip.isoDate) return slip.isoDate;
-  if (!slip.time) return '';
-  
-  const parts = slip.time.split(' ');
-  const dateParts = parts[0].split('/');
-  if (dateParts.length === 3) {
-    let day = dateParts[0].padStart(2, '0');
-    let month = dateParts[1].padStart(2, '0');
-    let year = parseInt(dateParts[2], 10);
-    if (year > 2500) year -= 543;
-    return `${year}-${month}-${day}`;
-  }
-  return '';
-}
-
-function renderSavedSlips(){
-  const area = $("savedSlipsArea");
-  if(!savedSlips.length){ 
-    area.innerHTML = "<p style='text-align:center;padding:20px;color:var(--text-muted)'>ยังไม่มีโพยที่ถูกบันทึก</p>"; 
-    return; 
-  }
-  
-  const startVal = $('startDate').value;
-  const endVal = $('endDate').value;
-
-  const filteredSlips = savedSlips.filter((s, index) => {
-    s._originalIndex = index;
-    if (!startVal && !endVal) return true;
-    const slipDate = parseSlipDate(s);
-    if (!slipDate) return true;
-    if (startVal && slipDate < startVal) return false;
-    if (endVal && slipDate > endVal) return false;
-    return true;
-  });
-
-  if(!filteredSlips.length){ 
-    area.innerHTML = "<p style='text-align:center;padding:20px;color:var(--text-muted)'>ไม่พบข้อมูลโพยในช่วงเวลาที่เลือก</p>"; 
-    return; 
-  }
-
-  const groupedSlips = {};
-  filteredSlips.forEach((s) => {
-    if(!groupedSlips[s.lottoName]){
-      groupedSlips[s.lottoName] = [];
-    }
-    groupedSlips[s.lottoName].push(s);
-  });
-
-  let grandTotalSlips = 0;
-  let grandTotalAmount = 0;
-  let grandTotalDiscount = 0;
-  let grandTotalWin = 0;
-
-  let finalHTML = "";
-
-  for (const lottoName in groupedSlips) {
-    const list = groupedSlips[lottoName];
-    let lottoTotalAmount = 0;
-    let lottoTotalDiscount = 0;
-    let lottoTotalWin = 0;
-
-    finalHTML += `
-      <div class="group-header">
-        <span>🚩 ${lottoName} (${list.length} โพย)</span>
-      </div>
-      <table class="table" style="margin-bottom: 25px;">
-        <thead>
-          <tr>
-            <th>รหัสโพย</th>
-            <th>ชื่อลูกค้า / Note</th>
-            <th>เวลา</th>
-            <th>ยอดส่งหวย</th>
-            <th>ส่วนลด</th>
-            <th>ถูกรางวัล</th>
-            <th>ผลชนะ</th>
-            <th>จัดการ</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
-    list.forEach((s) => {
-      const slipTotal = s.total || 0;
-      const slipDiscount = s.discount || 0;
-      const slipWin = s.winTotal || 0;
-      const netProfit = slipWin - (slipTotal - slipDiscount);
-
-      lottoTotalAmount += slipTotal;
-      lottoTotalDiscount += slipDiscount;
-      lottoTotalWin += slipWin;
-
-      finalHTML += `
-        <tr>
-          <td><b>${s.id}</b></td>
-          <td style="color:#f97316;font-weight:bold">${s.note || '-'}</td>
-          <td>${s.time}</td>
-          <td>${slipTotal.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
-          <td>${slipDiscount.toLocaleString()}</td>
-          <td>${slipWin.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
-          <td style="color:${netProfit >= 0 ? 'var(--win-color)' : 'var(--danger)'};font-weight:bold">
-            ${netProfit.toLocaleString('th-TH', {minimumFractionDigits:2})}
-          </td>
-          <td>
-            <div class="btn-action-group">
-              <button class="btn-view" onclick="viewSlipDetail(${s._originalIndex})">👁 ดูโพย</button>
-              <button class="btn-delete" onclick="deleteSlip(${s._originalIndex})">ลบ</button>
-            </div>
-          </td>
-        </tr>`;
+    // ตรวจสอบการเชื่อมต่อ Real-time
+    db.ref('.info/connected').on('value', (snap) => {
+      const syncStatus = document.getElementById('sync-status');
+      if (snap.val() === true) {
+        syncStatus.className = "text-sm px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        syncStatus.innerHTML = `<i class="fa-solid fa-wifi mr-1"></i> ออนไลน์ (Real-time)`;
+      } else {
+        syncStatus.className = "text-sm px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        syncStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i> ขาดการเชื่อมต่อ`;
+      }
     });
 
-    const lottoNetProfit = lottoTotalWin - (lottoTotalAmount - lottoTotalDiscount);
+    // ==========================================
+    // 2. ฟังก์ชันบันทึกโพยใหม่ลง Firebase
+    // ==========================================
+    function saveSlip() {
+      const nameInput = document.getElementById('customerName');
+      const lottoInput = document.getElementById('lottoInput');
 
-    finalHTML += `
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="3" style="text-align:center;">สรุปยอด [${lottoName}] รวม ${list.length} โพย</td>
-            <td>-${lottoTotalAmount.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
-            <td>${lottoTotalDiscount.toLocaleString()}</td>
-            <td>${lottoTotalWin.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
-            <td style="color:${lottoNetProfit >= 0 ? '#4ade80' : '#f87171'}">${lottoNetProfit.toLocaleString('th-TH', {minimumFractionDigits:2})}</td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>`;
+      const name = nameInput.value.trim() || 'ไม่ระบุชื่อ';
+      const rawText = lottoInput.value.trim();
 
-    grandTotalSlips += list.length;
-    grandTotalAmount += lottoTotalAmount;
-    grandTotalDiscount += lottoTotalDiscount;
-    grandTotalWin += lottoTotalWin;
-  }
+      if (!rawText) {
+        alert('กรุณากรอกรายการตัวเลขก่อนบันทึก');
+        return;
+      }
 
-  const grandNetProfit = grandTotalWin - (grandTotalAmount - grandTotalDiscount);
-
-  finalHTML += `
-    <div class="grand-summary-card">
-      <h3 style="margin-top:0;margin-bottom:12px;text-align:center;color:#ffffff;font-size:18px;">📊 สรุปรวมทุกหวยทั้งหมด</h3>
-      <table class="table" style="background:rgba(0,0,0,0.2);color:white;">
-        <thead>
-          <tr>
-            <th style="color:white;background:rgba(255,255,255,0.1);">จำนวนโพยรวม</th>
-            <th style="color:white;background:rgba(255,255,255,0.1);">ยอดส่งรวมทั้งหมด</th>
-            <th style="color:white;background:rgba(255,255,255,0.1);">ส่วนลดรวม</th>
-            <th style="color:white;background:rgba(255,255,255,0.1);">ถูกรางวัลรวม</th>
-            <th style="color:white;background:rgba(255,255,255,0.1);">กำไร / ขาดทุนสุทธิ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="font-size:16px;font-weight:bold;">
-            <td>${grandTotalSlips} โพย</td>
-            <td>-${grandTotalAmount.toLocaleString('th-TH', {minimumFractionDigits:2})} ฿</td>
-            <td>${grandTotalDiscount.toLocaleString()} ฿</td>
-            <td>${grandTotalWin.toLocaleString('th-TH', {minimumFractionDigits:2})} ฿</td>
-            <td style="color:${grandNetProfit >= 0 ? '#4ade80' : '#f87171'};font-size:18px;">
-              ${grandNetProfit.toLocaleString('th-TH', {minimumFractionDigits:2})} ฿
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>`;
-
-  area.innerHTML = finalHTML;
-}
-
-/* ฟังก์ชันคำนวณและสรุปยอดซื้อรวมแต่ละตัวเลข (2 ตัว 00-99 และ 3 ตัว 000-999) */
-function switchSummaryTab(tab) {
-  if (tab === '2digits') {
-    $('tab2DigitsBtn').classList.add('active');$('tab3DigitsBtn').classList.remove('active');
-    $('summaryTab2Digits').style.display = 'block';$('summaryTab3Digits').style.display = 'none';
-  } else {
-    $('tab2DigitsBtn').classList.remove('active');$('tab3DigitsBtn').classList.add('active');
-    $('summaryTab2Digits').style.display = 'none';$('summaryTab3Digits').style.display = 'block';
-  }
-}
-
-function calculateNumberSummary() {
-  const selectedLotto = $('summaryLottoSelect').value;
-  const showOnlyPurchased = $('showOnlyPurchased').checked;
-
-  const data2D = {};
-  for (let i = 0; i <= 99; i++) {
-    const numStr = String(i).padStart(2, '0');
-    data2D[numStr] = { top: 0, bottom: 0 };
-  }
-
-  const data3D = {};
-  for (let i = 0; i <= 999; i++) {
-    const numStr = String(i).padStart(3, '0');
-    data3D[numStr] = { top: 0, tood: 0 };
-  }
-
-  savedSlips.forEach(slip => {
-    if (selectedLotto !== "ทั้งหมด" && slip.lottoName !== selectedLotto) return;
-
-    slip.items.forEach(item => {
-      const mode = item.mode;
-      const top = Number(item.top) || 0;
-      const bottom = Number(item.bottom) || 0;
-
-      item.nums.forEach(num => {
-        if (num.length === 2 && data2D[num]) {
-          data2D[num].top += top;
-          data2D[num].bottom += bottom;
-        } else if (num.length === 3 && data3D[num]) {
-          data3D[num].top += top;
-          data3D[num].tood += bottom; // bottom ของ 3 ตัวเก็บเป็นยอดโต๊ด
+      // คำนวณยอดรวมคร่าวๆ
+      let total = 0;
+      const lines = rawText.split('\n');
+      lines.forEach(line => {
+        const parts = line.split('=');
+        if (parts.length === 2) {
+          const prices = parts[1].split('x');
+          prices.forEach(p => {
+            const val = parseFloat(p.trim());
+            if (!isNaN(val)) total += val;
+          });
         }
       });
+
+      const slipData = {
+        customerName: name,
+        rawText: rawText,
+        totalAmount: total,
+        timestamp: Date.now()
+      };
+
+      // Push ลง Firebase
+      slipsRef.push(slipData).then(() => {
+        nameInput.value = '';
+        lottoInput.value = '';
+      }).catch((err) => {
+        alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
+      });
+    }
+
+    // ==========================================
+    // 3. ดึงและซิงค์ข้อมูล Real-time ทุกเครื่อง
+    // ==========================================
+    slipsRef.on('value', (snapshot) => {
+      const data = snapshot.val();
+      const slipListDiv = document.getElementById('slipList');
+      slipListDiv.innerHTML = '';
+
+      let totalCount = 0;
+      let grandTotal = 0;
+
+      if (!data) {
+        slipListDiv.innerHTML = `<div class="text-center text-slate-500 py-8">ยังไม่มีรายการโพย</div>`;
+        document.getElementById('totalSlips').innerText = '0';
+        document.getElementById('totalAmount').innerText = '0';
+        return;
+      }
+
+      // แปลง Object เป็น Array แล้วเรียงลำดับตามเวลานำเข้าล่าสุดขึ้นก่อน
+      const entries = Object.entries(data).reverse();
+
+      entries.forEach(([id, slip]) => {
+        totalCount++;
+        grandTotal += (slip.totalAmount || 0);
+
+        const dateStr = new Date(slip.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+        const itemHtml = `
+          <div class="bg-slate-900 border border-slate-700 rounded-lg p-3 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-amber-400 text-sm">👤 ${escapeHtml(slip.customerName)}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">${dateStr}</span>
+                <button onclick="deleteSlip('${id}')" class="text-rose-400 hover:text-rose-300 text-xs px-1">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+            <pre class="font-mono text-xs text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 whitespace-pre-wrap">${escapeHtml(slip.rawText)}</pre>
+            <div class="text-right text-xs font-semibold text-emerald-400">
+              รวม: ${(slip.totalAmount || 0).toLocaleString()} บาท
+            </div>
+          </div>
+        `;
+        slipListDiv.innerHTML += itemHtml;
+      });
+
+      document.getElementById('totalSlips').innerText = totalCount.toLocaleString();
+      document.getElementById('totalAmount').innerText = grandTotal.toLocaleString();
     });
-  });
 
-  // Render 2 ตัว
-  const body2D = $('summary2DigitsBody');
-  body2D.innerHTML = '';
-  let sum2Top = 0, sum2Bottom = 0, sum2Total = 0;
-
-  Object.keys(data2D).forEach(num => {
-    const top = data2D[num].top;
-    const bottom = data2D[num].bottom;
-    const total = top + bottom;
-
-    if (showOnlyPurchased && total === 0) return;
-
-    sum2Top += top;
-    sum2Bottom += bottom;
-    sum2Total += total;
-
-    body2D.innerHTML += `
-      <tr>
-        <td><b>${num}</b></td>
-        <td>${top.toLocaleString()}</td>
-        <td>${bottom.toLocaleString()}</td>
-        <td style="font-weight:bold;color:var(--win-color)">${total.toLocaleString()}</td>
-      </tr>
-    `;
-  });
-
-  if (body2D.innerHTML === '') {
-    body2D.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted)">ไม่มีข้อมูลการซื้อ</td></tr>`;
-  } else {
-    body2D.innerHTML += `
-      <tr style="background:var(--summary-bg);font-weight:bold;color:white;">
-        <td>รวมทั้งหมด</td>
-        <td>${sum2Top.toLocaleString()} ฿</td>
-        <td>${sum2Bottom.toLocaleString()} ฿</td>
-        <td>${sum2Total.toLocaleString()} ฿</td>
-      </tr>
-    `;
-  }
-
-  // Render 3 ตัว
-  const body3D = $('summary3DigitsBody');
-  body3D.innerHTML = '';
-  let sum3Top = 0, sum3Tood = 0, sum3Total = 0;
-
-  Object.keys(data3D).forEach(num => {
-    const top = data3D[num].top;
-    const tood = data3D[num].tood;
-    const total = top + tood;
-
-    if (showOnlyPurchased && total === 0) return;
-
-    sum3Top += top;
-    sum3Tood += tood;
-    sum3Total += total;
-
-    body3D.innerHTML += `
-      <tr>
-        <td><b>${num}</b></td>
-        <td>${top.toLocaleString()}</td>
-        <td>${tood.toLocaleString()}</td>
-        <td style="font-weight:bold;color:var(--win-color)">${total.toLocaleString()}</td>
-      </tr>
-    `;
-  });
-
-  if (body3D.innerHTML === '') {
-    body3D.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted)">ไม่มีข้อมูลการซื้อ</td></tr>`;
-  } else {
-    body3D.innerHTML += `
-      <tr style="background:var(--summary-bg);font-weight:bold;color:white;">
-        <td>รวมทั้งหมด</td>
-        <td>${sum3Top.toLocaleString()} ฿</td>
-        <td>${sum3Tood.toLocaleString()} ฿</td>
-        <td>${sum3Total.toLocaleString()} ฿</td>
-      </tr>
-    `;
-  }
-}
-
-function viewSlipDetail(index){
-  const s = savedSlips[index];
-  if(!s) return;
-
-  $("modalSlipTitle").textContent = `รายละเอียดโพย ${s.id} (${s.lottoName})`;
-  
-  let bodyHTML = `
-    <div style="margin-bottom:12px;font-size:13px;color:var(--text-muted)">
-      <b>เวลาบันทึก:</b> ${s.time}<br>
-      ${s.note ? `<b>ชื่อลูกค้า / Note:</b> <span style="color:#f97316;font-weight:bold">${s.note}</span>` : ''}
-    </div>
-  `;
-
-  let totalGrand = 0;
-  s.items.forEach((it) => {
-    totalGrand += it.nums.length * (it.top + it.bottom);
-    let priceText = (it.mode==="3ตัว"||it.mode==="6กลับ") 
-      ? `3 ตัว บน : <b style="color:var(--win-color)">${it.top}</b> × โต๊ด : <b style="color:var(--win-color)">${it.bottom}</b>`
-      : `2 ตัว บน x ล่าง : <b style="color:var(--win-color)">${it.top} x ${it.bottom}</b>`;
-
-    bodyHTML += `
-      <div style="background:var(--bg-main);border:1px solid var(--border-color);border-radius:6px;padding:12px;margin-bottom:10px">
-        <div style="color:#f97316;font-size:14px;font-weight:bold;margin-bottom:6px">${priceText} (${it.nums.length} ชุด)</div>
-        <div style="font-size:16px;letter-spacing:3px;word-spacing:6px;line-height:1.8;word-break:break-all;font-weight:bold;color:var(--text-main)">
-          ${it.nums.join("  ")}
-        </div>
-      </div>
-    `;
-  });
-
-  bodyHTML += `
-    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--summary-bg);color:white;padding:10px 14px;border-radius:6px;font-weight:bold;margin-top:10px">
-      <span>ยอดรวมสุทธิในโพยนี้</span>
-      <span style="font-size:16px;color:#4ade80">${totalGrand.toLocaleString()} ฿</span>
-    </div>
-  `;
-
-  $("modalSlipBody").innerHTML = bodyHTML;
-  $("slipModal").classList.add("active");
-}
-
-function closeSlipModal(e){
-  if(!e || e.target === $("slipModal")){
-    $("slipModal").classList.remove("active");
-  }
-}
-
-function deleteSlip(i){
-  const s = savedSlips[i];
-  if(!s) return;
-
-  if(confirm(`ยืนยันลบโพย ${s.id} ใช่หรือไม่?`)){
-    if (GOOGLE_SHEET_URL) {
-      try {
-        fetch(GOOGLE_SHEET_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "delete",
-            id: s.id
-          })
-        });
-      } catch (err) {
-        console.error("ลบข้อมูลใน Google Sheets ไม่สำเร็จ:", err);
+    // ลบโพยเดี่ยว
+    function deleteSlip(id) {
+      if (confirm('ยืนยันการลบโพยนี้?')) {
+        db.ref(`slips/${id}`).remove();
       }
     }
 
-    savedSlips.splice(i,1);
-    localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
-    renderSavedSlips();
-  }
-}
-
-function checkResults(){
-  const target = $("checkTargetLotto").value;
-  const top3 = $("resTop3").value.trim();
-  const bottom2 = $("resBottom2").value.trim();
-
-  if(top3.length !== 3 || bottom2.length !== 2){
-    alert("กรุณาระบุผล 3 ตัวบน และ 2 ตัวล่างให้ครบ");
-    return;
-  }
-
-  const top2 = top3.slice(1, 3);
-  const toodList = permutations3(top3);
-  let winItems = [];
-  let totalPay = 0;
-
-  savedSlips.forEach(s => {
-    if(s.lottoName === target){
-      s.winTotal = 0;
-      s.items.forEach(it => {
-        it.nums.forEach(n => {
-          let winAmount = 0;
-          if((it.mode==="3ตัว"||it.mode==="6กลับ") && n === top3 && it.top > 0) winAmount = it.top * 900;
-          if((it.mode==="3ตัว"||it.mode==="6กลับ") && toodList.includes(n) && n !== top3 && it.bottom > 0) winAmount = it.bottom * 150;
-          if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === top2 && it.top > 0) winAmount = it.top * 90;
-          if((it.mode==="2ตัว"||it.mode==="19ประตู") && n === bottom2 && it.bottom > 0) winAmount = it.bottom * 90;
-
-          if(winAmount > 0){
-            s.winTotal += winAmount;
-            winItems.push({id: s.id, num: n, win: winAmount});
-          }
-        });
-      });
+    // ลบโพยทั้งหมด
+    function clearAllSlips() {
+      if (confirm('⚠️ ต้องการลบรายการโพยทั้งหมดในระบบใช่หรือไม่?')) {
+        slipsRef.remove();
+      }
     }
-  });
 
-  localStorage.setItem("lotto_slips_db", JSON.stringify(savedSlips));
-
-  const resBox = $("checkResultArea");
-  if(!winItems.length){
-    resBox.innerHTML = `<b style="color:var(--danger)">ไม่พบรายการถูกรางวัลใน ${target}</b>`;
-    return;
-  }
-
-  let html = `<table class="table"><thead><tr><th>รหัสโพย</th><th>เลขถูกรางวัล</th><th>รางวัลที่ได้</th></tr></thead><tbody>`;
-  winItems.forEach(w => {
-    totalPay += w.win;
-    html += `<tr><td>${w.id}</td><td><b>${w.num}</b></td><td><b style="color:var(--win-color)">${w.win.toLocaleString()} ฿</b></td></tr>`;
-  });
-  html += `</tbody></table><h4 style="color:var(--win-color)">รวมยอดจ่ายรางวัลทั้งหมด: ${totalPay.toLocaleString()} ฿</h4>`;
-  resBox.innerHTML = html;
-}
-
-$("number").addEventListener("keydown", (e)=>{
-  if(e.code==="Space" || e.key===" "){ e.preventDefault(); toggleReverse(); }
-  if(e.key==="Enter"){
-    e.preventDefault(); acceptTypedNumbers();
-    if(pendingNumbers.length){ $("topPrice").focus(); $("topPrice").select(); }
-  }
-});
-$("number").addEventListener("input", acceptTypedNumbers);
-
-$("topPrice").addEventListener("keydown", (e)=>{ 
-  if(e.key==="Enter"){ e.preventDefault(); $("bottomPrice").focus(); $("bottomPrice").select(); }
-});
-
-$("bottomPrice").addEventListener("keydown", (e)=>{ 
-  if(e.key==="Enter"){ e.preventDefault(); addItem(); }
-});
-
-$("note").addEventListener("keydown", (e)=>{
-  if(e.key === "Enter" && !e.shiftKey){
-    e.preventDefault();
-    sendSlip();
-  }
-});
-
-setDateFilter('today');
-updateInputs();
-</script>
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
 </body>
 </html>
